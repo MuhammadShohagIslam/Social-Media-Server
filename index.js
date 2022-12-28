@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -23,6 +23,12 @@ const run = async () => {
     try {
         const postsCollection = client.db("socialMedia").collection("posts");
         const usersCollection = client.db("socialMedia").collection("users");
+        const commentsCollection = client
+            .db("socialMedia")
+            .collection("comments");
+        const likePostCollection = client
+            .db("socialMedia")
+            .collection("likePosts");
 
         // create jwt token
         app.post("/jwt", (req, res) => {
@@ -86,6 +92,98 @@ const run = async () => {
             try {
                 const posts = await postsCollection.find({}).toArray();
                 res.status(200).json(posts);
+            } catch (error) {
+                res.status(500).send({ message: "Server Error" });
+            }
+        });
+
+        // get post by postId
+        app.get("/posts/:postId", async (req, res) => {
+            try {
+                const query = {
+                    _id: ObjectId(req.params.postId),
+                };
+                const posts = await postsCollection.findOne(query);
+                res.status(200).json(posts);
+            } catch (error) {
+                res.status(500).send({ message: "Server Error" });
+            }
+        });
+
+        // like the post
+        app.post("/likes", async (req, res) => {
+            try {
+                const likePostData = {
+                    ...req.body,
+                };
+                const isLikedPostExist = await likePostCollection.findOne({
+                    email: req.body.email,
+                    _id: req.body.postId,
+                });
+                if (isLikedPostExist) {
+                    return res
+                        .status(400)
+                        .send({ message: "User Already Liked The Post!" });
+                }
+                const newLikedPost = await likePostCollection.insertOne(
+                    likePostData
+                );
+                res.status(200).send(newLikedPost);
+            } catch (error) {
+                res.status(500).send({ message: error.message });
+            }
+        });
+
+        // get all likedPosts
+        app.get("/likes", async (req, res) => {
+            try {
+                const likePosts = await likePostCollection.find({}).toArray();
+                res.status(200).json(likePosts);
+            } catch (error) {
+                res.status(500).send({ message: "Server Error" });
+            }
+        });
+
+        // delete likedPost by query
+        app.delete("/likes", async (req, res) => {
+            try {
+                if (req.query.likedUserEmail || req.query.likedUserName) {
+                    const query = {
+                        postId: req.query.postId,
+                        likedUserEmail: req.query.likedUserEmail,
+                    };
+                    const removedLikedPost = await likePostCollection.deleteOne(
+                        query
+                    );
+                    res.status(200).json(removedLikedPost);
+                }
+            } catch (error) {
+                res.status(500).send({ message: error.message });
+            }
+        });
+
+        // create new comment
+        app.post("/comments", async (req, res) => {
+            try {
+                const commentObj = {
+                    ...req.body,
+                    commentedAt: Date.now(),
+                };
+
+                const newComment = await commentsCollection.insertOne(
+                    commentObj
+                );
+                res.status(201).json(newComment);
+            } catch (error) {
+                res.status(500).send({ message: error.message });
+            }
+        });
+
+        // get all comments
+        app.get("/comments", async (req, res) => {
+            try {
+                const comments = await commentsCollection.find({}).toArray();
+                res.status(200).json(comments);
             } catch (error) {
                 res.status(500).send({ message: "Server Error" });
             }
