@@ -96,7 +96,43 @@ const run = async () => {
                 res.status(500).send({ message: "Server Error" });
             }
         });
+        app.get("/top-three-post", async (req, res) => {
+            try {
+                const likePostsArray = await likePostCollection
+                    .find({})
+                    .toArray();
 
+                let arrayToObject = likePostsArray.reduce((acc, cur) => {
+                    if (acc[cur.postId]) {
+                        acc[cur.postId] = acc[cur.postId] + 1;
+                    } else {
+                        acc[cur.postId] = 1;
+                    }
+                    return acc;
+                }, {});
+
+                const sortedArrayToObject = Object.keys(arrayToObject)
+                    .sort(function (a, b) {
+                        return arrayToObject[b] - arrayToObject[a];
+                    })
+                    .slice(0, 3);
+
+                const sortedIdToObjectId = sortedArrayToObject.map(
+                    (sortedArr) => ObjectId(sortedArr)
+                );
+
+                const topThreePost = await Promise.all(
+                    sortedIdToObjectId.map(async (topPostId) => {
+                        return await postsCollection.findOne({
+                            _id: topPostId,
+                        });
+                    })
+                );
+                res.status(200).json(topThreePost);
+            } catch (error) {
+                res.status(500).send({ message: "Server Error" });
+            }
+        });
         // get post by postId
         app.get("/posts/:postId", async (req, res) => {
             try {
@@ -193,6 +229,10 @@ const run = async () => {
 };
 
 run().catch((error) => console.log(error.message));
+
+app.get("/", (req, res) => {
+    res.send(`ShohagCSM server is running on ${port}`);
+});
 
 app.listen(port, () => {
     console.log(`ShohagCSM server is running on ${port}`);
