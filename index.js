@@ -22,9 +22,20 @@ const run = async () => {
     try {
         const postsCollection = client.db("socialMedia").collection("posts");
 
-        app.get("/", (req, res)=>{
-            res.json("A")
-        })
+        // create new post
+        app.post("/posts", async (req, res) => {
+            try {
+                const postObj = {
+                    ...req.body,
+                    postedAt: Date.now()
+                };
+
+                const newPost = await postsCollection.insertOne(postObj);
+                res.status(201).json(newPost);
+            } catch (error) {
+                res.status(500).send({ message: error.message });
+            }
+        });
 
     } finally{
 
