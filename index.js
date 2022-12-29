@@ -28,7 +28,6 @@ const verifyJWT = (req, res, next) => {
         }
 
         const token = authHeader.split(" ")[1];
-        console.log(token, authHeader, "headers");
         jwt.verify(
             token,
             process.env.ACCESS_TOKEN_SCREAT,
@@ -164,7 +163,10 @@ const run = async () => {
         // get all posts
         app.get("/posts", async (req, res) => {
             try {
-                const posts = await postsCollection.find({}).toArray();
+                const posts = await postsCollection
+                    .find({})
+                    .sort({ postedAt: -1 })
+                    .toArray();
                 res.status(200).json(posts);
             } catch (error) {
                 res.status(500).send({ message: "Server Error" });
