@@ -19,6 +19,34 @@ const client = new MongoClient(uri, {
     serverApi: ServerApiVersion.v1,
 });
 
+// middleware for verifying token
+const verifyJWT = (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).send({ message: "unauthorize access" });
+        }
+
+        const token = authHeader.split(" ")[1];
+        console.log(token, authHeader, "headers");
+        jwt.verify(
+            token,
+            process.env.ACCESS_TOKEN_SCREAT,
+            function (err, decoded) {
+                if (err) {
+                    return res
+                        .status(403)
+                        .send({ message: "Forbidden Access" });
+                }
+                req.decoded = decoded;
+                next();
+            }
+        );
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+};
+
 const run = async () => {
     try {
         const postsCollection = client.db("socialMedia").collection("posts");
@@ -84,8 +112,6 @@ const run = async () => {
                 const userData = {
                     ...req.body,
                 };
-                // check is user is already exits to the database, if it's exits, we do not allow
-                // to insert new user to the database
                 const user = await usersCollection.findOne({
                     email: req.body.email,
                 });
@@ -102,7 +128,7 @@ const run = async () => {
         });
 
         // get user by query parameter
-        app.get("/users", async (req, res) => {
+        app.get("/users", verifyJWT, async (req, res) => {
             try {
                 let query;
                 if (req.query.email || req.query.name) {
