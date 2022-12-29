@@ -49,6 +49,35 @@ const run = async () => {
             }
         });
 
+        // create-or-update-user
+        app.patch("/create-or-update-user", async (req, res) => {
+            try {
+                const userData = {
+                    name: req.body.name,
+                    email: req.body.email,
+                    profileImgUrl: req.body.profileImgUrl,
+                    address: req.body.address,
+                    university: req.body.university,
+                };
+
+                const user = await usersCollection.findOneAndUpdate(
+                    { _id: ObjectId(req.body.userId) },
+                    { $set: { ...userData } },
+                    {
+                        upsert: true,
+                    }
+                );
+                if (user) {
+                    res.status(200).json(user);
+                } else {
+                    const newUser = await usersCollection.insertOne(userData);
+                    res.status(200).json(newUser);
+                }
+            } catch (error) {
+                res.status(500).send({ message: error.message });
+            }
+        });
+
         // create new user
         app.post("/users", async (req, res) => {
             try {
@@ -69,6 +98,25 @@ const run = async () => {
                 res.status(200).send(newUser);
             } catch (error) {
                 res.status(500).send({ message: error.message });
+            }
+        });
+
+        // get user by query parameter
+        app.get("/users", async (req, res) => {
+            try {
+                let query;
+                if (req.query.email || req.query.name) {
+                    query = {
+                        $or: [
+                            { email: req.query.email },
+                            { name: req.query.name },
+                        ],
+                    };
+                }
+                const user = await usersCollection.findOne(query);
+                res.status(200).json(user);
+            } catch (error) {
+                res.status(500).send({ message: "Server Error" });
             }
         });
 
